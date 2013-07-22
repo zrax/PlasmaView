@@ -18,11 +18,15 @@
 
 #include <QMessageBox>
 #include <QKeyEvent>
-#include <QOpenGLExtensions>
+#include <QMouseEvent>
+#include <QMatrix4x4>
+#include <QtMath>
 #include <PRP/Geometry/plDrawableSpans.h>
 
+static const float s_degPerRad = 0.0174532925f;
+
 PlasmaGLWidget::PlasmaGLWidget(QWidget *parent)
-    : QGLWidget(parent)
+    : QGLWidget(parent), m_theta(0.0f), m_phi(0.0f)
 {
     setAttribute(Qt::WA_NoSystemBackground);
     setFocusPolicy(Qt::StrongFocus);
@@ -75,8 +79,11 @@ void PlasmaGLWidget::initializeGL()
     if (!m_shader.bind())
         return;
 
-    // Current view position
-    m_shader.setUniformValue("u_view", m_view);
+    // Starting view position
+    QMatrix4x4 view;
+    view.rotate(-90.0f, 1.0f, 0.0f, 0.0f);
+    view.rotate(0.0f, 0.0f, 0.0f, 1.0f);
+    m_shader.setUniformValue("u_view", view);
 }
 
 void PlasmaGLWidget::resizeGL(int w, int h)
@@ -138,14 +145,89 @@ void PlasmaGLWidget::keyPressEvent(QKeyEvent *event)
 {
     switch (event->key()) {
     case Qt::Key_Down:
-        m_view.translate(0.0f, 0.0f, -2.0f);
-        m_shader.setUniformValue("u_view", m_view);
+        m_phi += 10.0f;
         break;
     case Qt::Key_Up:
-        m_view.translate(0.0f, 0.0f, 2.0f);
-        m_shader.setUniformValue("u_view", m_view);
+        m_phi -= 10.0f;
+        break;
+    case Qt::Key_Left:
+        m_theta -= 10.0f;
+        break;
+    case Qt::Key_Right:
+        m_theta += 10.0f;
+        break;
+    case Qt::Key_W:
+        m_position.setX(m_position.x() + qSin(m_theta * s_degPerRad) * 2.0f);
+        m_position.setY(m_position.y() + qCos(m_theta * s_degPerRad) * 2.0f);
+        break;
+    case Qt::Key_S:
+        m_position.setX(m_position.x() - qSin(m_theta * s_degPerRad) * 2.0f);
+        m_position.setY(m_position.y() - qCos(m_theta * s_degPerRad) * 2.0f);
+        break;
+    case Qt::Key_A:
+        m_position.setX(m_position.x() - qCos(m_theta * s_degPerRad) * 2.0f);
+        m_position.setY(m_position.y() - qSin(m_theta * s_degPerRad) * 2.0f);
+        break;
+    case Qt::Key_D:
+        m_position.setX(m_position.x() + qCos(m_theta * s_degPerRad) * 2.0f);
+        m_position.setY(m_position.y() + qSin(m_theta * s_degPerRad) * 2.0f);
+        break;
+    case Qt::Key_PageUp:
+        m_position.setZ(m_position.z() + 2.0f);
+        break;
+    case Qt::Key_PageDown:
+        m_position.setZ(m_position.z() - 2.0f);
+        break;
+    case Qt::Key_Home:
+        m_position = QVector3D(0.0f, 0.0f, 0.0f);
+        m_theta = 0.0f;
+        m_phi = 0.0f;
         break;
     }
 
+    QMatrix4x4 view;
+    view.rotate(-90.0f + m_phi, 1.0f, 0.0f, 0.0f);
+    view.rotate(m_theta, 0.0f, 0.0f, 1.0f);
+    view.translate(-m_position.x(), -m_position.y(), -m_position.z());
+    m_shader.setUniformValue("u_view", view);
+    updateGL();
+}
+
+void PlasmaGLWidget::mousePressEvent(QMouseEvent *event)
+{
+    m_mousePos = event->pos();
+}
+
+void PlasmaGLWidget::mouseMoveEvent(QMouseEvent *event)
+{
+    if (event->buttons() == Qt::LeftButton) {
+        // FPS-style movement
+        float delta = m_mousePos.y() - event->pos().y();
+        m_position.setX(m_position.x() + qSin(m_theta * s_degPerRad) * delta);
+        m_position.setY(m_position.y() + qCos(m_theta * s_degPerRad) * delta);
+        m_theta += event->pos().x() - m_mousePos.x();
+    } else if (event->buttons() == Qt::RightButton) {
+        // Look mode
+        m_theta += event->pos().x() - m_mousePos.x();
+        m_phi -= m_mousePos.y() - event->pos().y();
+        if (m_phi < -90.0f)
+            m_phi = -90.0f;
+        else if (m_phi > 90.0f)
+            m_phi = 90.0f;
+    } else if (event->buttons() == Qt::MiddleButton ||
+               (event->buttons() == (Qt::LeftButton | Qt::RightButton))) {
+        // Pan mode
+        float delta = event->pos().x() - m_mousePos.x();
+        m_position.setZ(m_position.z() + m_mousePos.y() - event->pos().y());
+        m_position.setX(m_position.x() + qSin((m_theta + 90.0f) * s_degPerRad) * delta);
+        m_position.setY(m_position.y() + qCos((m_theta + 90.0f) * s_degPerRad) * delta);
+    }
+    m_mousePos = event->pos();
+
+    QMatrix4x4 view;
+    view.rotate(-90.0f + m_phi, 1.0f, 0.0f, 0.0f);
+    view.rotate(m_theta, 0.0f, 0.0f, 1.0f);
+    view.translate(-m_position.x(), -m_position.y(), -m_position.z());
+    m_shader.setUniformValue("u_view", view);
     updateGL();
 }

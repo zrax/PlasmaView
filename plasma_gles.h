@@ -19,7 +19,7 @@
 
 #include <QGLWidget>
 #include <QOpenGLShaderProgram>
-#include <QMatrix4x4>
+#include <QVector3D>
 #include <QList>
 
 class plDrawableSpans;
@@ -41,6 +41,8 @@ protected:
     virtual void paintGL();
 
     virtual void keyPressEvent(QKeyEvent *event);
+    virtual void mousePressEvent(QMouseEvent *event);
+    virtual void mouseMoveEvent(QMouseEvent *event);
 
 private:
     struct RenderData
@@ -53,7 +55,9 @@ private:
         bool m_skinIndices;
     };
     QList<RenderData> m_drawables;
-    QMatrix4x4 m_view;
+    QVector3D m_position;
+    float m_theta, m_phi;
+    QPoint m_mousePos;
 
     QOpenGLShaderProgram m_shader;
 };

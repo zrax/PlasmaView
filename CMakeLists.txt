@@ -5,7 +5,6 @@ find_package(HSPlasma REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5OpenGL REQUIRED)
-find_package(Qt5OpenGLExtensions REQUIRED)
 
 if(MSVC)
     add_definitions("/D_CRT_SECURE_NO_WARNINGS")
@@ -50,7 +49,7 @@ endif()
 
 add_executable(PlasmaView WIN32 MACOSX_BUNDLE
                ${PlasmaView_Sources} ${PlasmaView_MOC} ${PlasmaView_RCC})
-qt5_use_modules(PlasmaView Core Widgets OpenGL OpenGLExtensions)
+qt5_use_modules(PlasmaView Core Widgets OpenGL)
 target_link_libraries(PlasmaView HSPlasma)
 
 # Oh look, CMake+Qt+OpenGL is STILL broken on Windows :(
