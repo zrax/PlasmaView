@@ -1,0 +1,8 @@
+[Icon Theme]
+Name=Oxygen
+Comment=Oxygen Theme
+Inherits=default
+Directories=32x32
+
+[32x32]
+Size=32

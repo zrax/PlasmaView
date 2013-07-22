@@ -1,0 +1,22 @@
+<RCC>
+    <qresource prefix="/icons/oxygen">
+        <file alias="index.theme">icons/oxygen.theme</file>
+        <file alias="32x32/document-open.png">icons/document-open.png</file>
+    </qresource>
+
+    <qresource prefix="/res">
+        <file alias="page.png">icons/page.png</file>
+        <file alias="sceneobj.png">icons/sceneobj.png</file>
+        <file alias="sim.png">icons/sim.png</file>
+
+        <file alias="view-points.png">icons/view-points.png</file>
+        <file alias="view-wire.png">icons/view-wire.png</file>
+        <file alias="view-flat.png">icons/view-flat.png</file>
+        <file alias="view-textured.png">icons/view-textured.png</file>
+    </qresource>
+
+    <qresource prefix="/shaders">
+        <file alias="vshader.glsl">shaders/vshader.glsl</file>
+        <file alias="fshader.glsl">shaders/fshader.glsl</file>
+    </qresource>
+</RCC>
