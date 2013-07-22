@@ -18,6 +18,8 @@
 #define _PLASMAVIEW_H
 
 #include <QMainWindow>
+#include <QTreeWidgetItem>
+#include <PRP/KeyedObject/plLocation.h>
 
 class QTreeWidget;
 class plResManager;
@@ -35,12 +37,29 @@ public:
 
 private slots:
     void onOpenAge();
+    void selectObject(QTreeWidgetItem *current, QTreeWidgetItem *previous);
 
 private:
     plResManager *m_resMgr;
+    plLocation m_currentLocation;
 
     QTreeWidget *m_objectTree;
     PlasmaGLWidget *m_render;
+};
+
+class PlasmaTreeWidgetItem : public QTreeWidgetItem
+{
+public:
+    PlasmaTreeWidgetItem(QTreeWidget *parent, const QStringList &strings)
+        : QTreeWidgetItem(parent, strings) { }
+    PlasmaTreeWidgetItem(QTreeWidgetItem *parent, const QStringList &strings)
+        : QTreeWidgetItem(parent, strings) { }
+
+    void setLocation(const plLocation &loc) { m_location = loc; }
+    const plLocation &location() const { return m_location; }
+
+private:
+    plLocation m_location;
 };
 
 #endif

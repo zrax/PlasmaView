@@ -60,6 +60,11 @@ private:
     QPoint m_mousePos;
 
     QOpenGLShaderProgram m_shader;
+    int sha_position;
+    int sha_color;
+    int shu_view;
+
+    void updateViewMatrix();
 };
 
 #endif

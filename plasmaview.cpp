@@ -47,6 +47,8 @@ PlasmaView::PlasmaView()
     m_objectTree->setHeaderHidden(true);
     m_objectTree->setRootIsDecorated(true);
     m_objectTree->setIconSize(QSize(16, 16));
+    connect(m_objectTree, SIGNAL(currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)),
+            SLOT(selectObject(QTreeWidgetItem*,QTreeWidgetItem*)));
 
     treeDock->setWidget(m_objectTree);
     addDockWidget(Qt::LeftDockWidgetArea, treeDock);
@@ -127,9 +129,10 @@ void PlasmaView::loadAge(const QString &filename)
             // No scene node here!
             continue;
 
-        QTreeWidgetItem *page_item = new QTreeWidgetItem(m_objectTree,
+        PlasmaTreeWidgetItem *page_item = new PlasmaTreeWidgetItem(m_objectTree,
                 QStringList(plStringToQString(age->getPage(pg).fName)));
         page_item->setIcon(0, QIcon(":/res/page.png"));
+        page_item->setLocation(pageLoc);
 
         if (keys.size() > 1) {
             QMessageBox::critical(this, "Bad Node",
@@ -148,8 +151,9 @@ void PlasmaView::loadAge(const QString &filename)
 
         foreach (const plKey &key, keys) {
             plSceneObject *obj = plSceneObject::Convert(key->getObj());
-            QTreeWidgetItem *obj_item = new QTreeWidgetItem(page_item,
+            PlasmaTreeWidgetItem *obj_item = new PlasmaTreeWidgetItem(page_item,
                     QStringList(plStringToQString(key->getName())));
+            obj_item->setLocation(pageLoc);
 
             if (obj->getDrawInterface().Exists())
                 obj_item->setIcon(0, QIcon(":/res/sceneobj.png"));
@@ -157,12 +161,26 @@ void PlasmaView::loadAge(const QString &filename)
                 obj_item->setIcon(0, QIcon(":/res/sim.png"));
         }
         page_item->sortChildren(0, Qt::AscendingOrder);
-
-        // HACK
-        keys = m_resMgr->getKeys(pageLoc, kDrawableSpans);
-        foreach (const plKey &key, keys) {
-            plDrawableSpans *spans = plDrawableSpans::Convert(key->getObj());
-            m_render->addGeometry(spans);
-        }
     }
+}
+
+void PlasmaView::selectObject(QTreeWidgetItem *current, QTreeWidgetItem *)
+{
+    if (current == 0)
+        return;
+
+    PlasmaTreeWidgetItem *item = static_cast<PlasmaTreeWidgetItem *>(current);
+    if (item->location() == m_currentLocation)
+        return;
+
+    // HACK
+    m_render->clear();
+    std::vector<plKey> keys = m_resMgr->getKeys(item->location(), kDrawableSpans);
+    foreach (const plKey &key, keys) {
+        plDrawableSpans *spans = plDrawableSpans::Convert(key->getObj());
+        m_render->addGeometry(spans);
+    }
+
+    m_render->updateGL();
+    m_currentLocation = item->location();
 }

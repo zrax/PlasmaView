@@ -36,6 +36,12 @@ void PlasmaGLWidget::clear()
 {
     foreach (const RenderData &drawable, m_drawables)
         glDeleteBuffers(2, drawable.m_buffers);
+    m_drawables.clear();
+
+    m_position = QVector3D(0.0f, 0.0f, 0.0f);
+    m_theta = 0.0f;
+    m_phi = 0.0f;
+    updateViewMatrix();
 }
 
 void PlasmaGLWidget::addGeometry(plDrawableSpans *spans)
@@ -79,11 +85,13 @@ void PlasmaGLWidget::initializeGL()
     if (!m_shader.bind())
         return;
 
+    // Shader parameter locations
+    sha_position = m_shader.attributeLocation("a_position");
+    sha_color = m_shader.attributeLocation("a_color");
+    shu_view = m_shader.uniformLocation("u_view");
+
     // Starting view position
-    QMatrix4x4 view;
-    view.rotate(-90.0f, 1.0f, 0.0f, 0.0f);
-    view.rotate(0.0f, 0.0f, 0.0f, 1.0f);
-    m_shader.setUniformValue("u_view", view);
+    updateViewMatrix();
 }
 
 void PlasmaGLWidget::resizeGL(int w, int h)
@@ -105,9 +113,8 @@ void PlasmaGLWidget::paintGL()
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, render.m_buffers[1]);
 
         uintptr_t offset = 0;
-        int vertexPos = m_shader.attributeLocation("a_position");
-        m_shader.enableAttributeArray(vertexPos);
-        glVertexAttribPointer(vertexPos, 3, GL_FLOAT, GL_FALSE, render.m_stride,
+        m_shader.enableAttributeArray(sha_position);
+        glVertexAttribPointer(sha_position, 3, GL_FLOAT, GL_FALSE, render.m_stride,
                               reinterpret_cast<GLvoid *>(offset));
         offset += 3 * sizeof(float);
 
@@ -122,9 +129,8 @@ void PlasmaGLWidget::paintGL()
         offset += 3 * sizeof(float);
 
         // Color
-        int colorPos = m_shader.attributeLocation("a_color");
-        m_shader.enableAttributeArray(colorPos);
-        glVertexAttribPointer(colorPos, 4, GL_UNSIGNED_BYTE, GL_TRUE,
+        m_shader.enableAttributeArray(sha_color);
+        glVertexAttribPointer(sha_color, 4, GL_UNSIGNED_BYTE, GL_TRUE,
                               render.m_stride, reinterpret_cast<GLvoid *>(offset));
         offset += sizeof(unsigned int);
 
@@ -185,11 +191,7 @@ void PlasmaGLWidget::keyPressEvent(QKeyEvent *event)
         break;
     }
 
-    QMatrix4x4 view;
-    view.rotate(-90.0f + m_phi, 1.0f, 0.0f, 0.0f);
-    view.rotate(m_theta, 0.0f, 0.0f, 1.0f);
-    view.translate(-m_position.x(), -m_position.y(), -m_position.z());
-    m_shader.setUniformValue("u_view", view);
+    updateViewMatrix();
     updateGL();
 }
 
@@ -224,10 +226,15 @@ void PlasmaGLWidget::mouseMoveEvent(QMouseEvent *event)
     }
     m_mousePos = event->pos();
 
+    updateViewMatrix();
+    updateGL();
+}
+
+void PlasmaGLWidget::updateViewMatrix()
+{
     QMatrix4x4 view;
     view.rotate(-90.0f + m_phi, 1.0f, 0.0f, 0.0f);
     view.rotate(m_theta, 0.0f, 0.0f, 1.0f);
     view.translate(-m_position.x(), -m_position.y(), -m_position.z());
-    m_shader.setUniformValue("u_view", view);
-    updateGL();
+    m_shader.setUniformValue(shu_view, view);
 }
