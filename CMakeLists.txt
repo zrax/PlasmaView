@@ -6,6 +6,9 @@ find_package(Qt5Core REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5OpenGL REQUIRED)
 
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+find_package(GLESv2 REQUIRED)
+
 if(MSVC)
     add_definitions("/D_CRT_SECURE_NO_WARNINGS")
 endif()
@@ -52,15 +55,5 @@ add_executable(PlasmaView WIN32 MACOSX_BUNDLE
 qt5_use_modules(PlasmaView Core Widgets OpenGL)
 target_link_libraries(PlasmaView HSPlasma)
 
-# Oh look, CMake+Qt+OpenGL is STILL broken on Windows :(
-if(WIN32)
-    set(GLESv2_PREFIX "GLESv2_PREFIX-NOTFOUND"
-        CACHE PATH "Path to libEGL and libGLESv2")
-
-    if(GLESv2_PREFIX STREQUAL "GLESv2_PREFIX-NOTFOUND")
-        message(FATAL_ERROR "GLESv2 is required, but GLESv2_PREFIX was not set")
-    endif()
-
-    target_link_libraries(PlasmaView ${GLESv2_PREFIX}/libEGL.lib
-                                     ${GLESv2_PREFIX}/libGLESv2.lib)
-endif()
+# Qt5OpenGLConfig.cmake doesn't give us the GL dependencies automatically :(
+target_link_libraries(PlasmaView ${GLESv2_LIBRARIES})

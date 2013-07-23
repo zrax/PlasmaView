@@ -21,6 +21,7 @@
 #include <QMouseEvent>
 #include <QMatrix4x4>
 #include <QtMath>
+#include <GLES2/gl2.h>
 #include <PRP/Geometry/plDrawableSpans.h>
 
 static const float s_degPerRad = 0.0174532925f;

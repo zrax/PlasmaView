@@ -1,0 +1,21 @@
+if(GLESv2_LIBRARY AND EGL_LIBRARY)
+    set(GLESv2_FIND_QUIETLY TRUE)
+endif()
+
+find_library(GLESv2_LIBRARY NAMES GLESv2)
+find_library(EGL_LIBRARY NAMES EGL)
+set(GLESv2_LIBRARIES ${GLESv2_LIBRARY} ${EGL_LIBRARY})
+
+if(GLESv2_LIBRARY AND EGL_LIBRARY)
+    set(GLESv2_FOUND TRUE)
+endif()
+
+if(GLESv2_FOUND)
+    if(NOT GLESv2_FIND_QUIETLY)
+        message(STATUS "Found GLESv2 libraries: ${GLESv2_LIBRARIES}")
+    endif()
+else()
+    if(GLESv2_FIND_REQUIRED)
+        message(FATAL_ERROR "Could not find GLESv2 libraries")
+    endif()
+endif()
