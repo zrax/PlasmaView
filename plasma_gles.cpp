@@ -187,12 +187,12 @@ void PlasmaGLWidget::keyPressEvent(QKeyEvent *event)
         m_position.setY(m_position.y() - qCos(m_theta * s_degPerRad) * 2.0f);
         break;
     case Qt::Key_A:
-        m_position.setX(m_position.x() - qCos(m_theta * s_degPerRad) * 2.0f);
-        m_position.setY(m_position.y() - qSin(m_theta * s_degPerRad) * 2.0f);
+        m_position.setX(m_position.x() - qSin((m_theta + 90.0f) * s_degPerRad) * 2.0f);
+        m_position.setY(m_position.y() - qCos((m_theta + 90.0f) * s_degPerRad) * 2.0f);
         break;
     case Qt::Key_D:
-        m_position.setX(m_position.x() + qCos(m_theta * s_degPerRad) * 2.0f);
-        m_position.setY(m_position.y() + qSin(m_theta * s_degPerRad) * 2.0f);
+        m_position.setX(m_position.x() + qSin((m_theta + 90.0f) * s_degPerRad) * 2.0f);
+        m_position.setY(m_position.y() + qCos((m_theta + 90.0f) * s_degPerRad) * 2.0f);
         break;
     case Qt::Key_PageUp:
         m_position.setZ(m_position.z() + 2.0f);
@@ -214,22 +214,28 @@ void PlasmaGLWidget::keyPressEvent(QKeyEvent *event)
 void PlasmaGLWidget::mousePressEvent(QMouseEvent *event)
 {
     m_mousePos = event->pos();
+    setCursor(QCursor(Qt::BlankCursor));
+}
+
+void PlasmaGLWidget::mouseReleaseEvent(QMouseEvent *)
+{
+    setCursor(QCursor(Qt::ArrowCursor));
 }
 
 void PlasmaGLWidget::mouseMoveEvent(QMouseEvent *event)
 {
     if (event->buttons() == Qt::LeftButton) {
         // Flat Movement
-        float delta = m_mousePos.y() - event->pos().y();
+        float delta = (m_mousePos.y() - event->pos().y()) * .5f;
         m_position.setX(m_position.x() + qSin(m_theta * s_degPerRad) * delta);
         m_position.setY(m_position.y() + qCos(m_theta * s_degPerRad) * delta);
-        delta = event->pos().x() - m_mousePos.x();
-        m_position.setX(m_position.x() + qCos(m_theta * s_degPerRad) * delta);
-        m_position.setY(m_position.y() + qSin(m_theta * s_degPerRad) * delta);
+        delta = (event->pos().x() - m_mousePos.x()) * .5f;
+        m_position.setX(m_position.x() + qSin((m_theta + 90.0f) * s_degPerRad) * delta);
+        m_position.setY(m_position.y() + qCos((m_theta + 90.0f) * s_degPerRad) * delta);
     } else if (event->buttons() == Qt::RightButton) {
         // Look mode
-        m_theta += event->pos().x() - m_mousePos.x();
-        m_phi -= m_mousePos.y() - event->pos().y();
+        m_theta += (event->pos().x() - m_mousePos.x()) * .5f;
+        m_phi -= (m_mousePos.y() - event->pos().y()) * .5f;
         if (m_phi < -90.0f)
             m_phi = -90.0f;
         else if (m_phi > 90.0f)
@@ -237,12 +243,18 @@ void PlasmaGLWidget::mouseMoveEvent(QMouseEvent *event)
     } else if (event->buttons() == Qt::MiddleButton ||
                (event->buttons() == (Qt::LeftButton | Qt::RightButton))) {
         // Pan mode
-        float delta = event->pos().x() - m_mousePos.x();
-        m_position.setZ(m_position.z() + m_mousePos.y() - event->pos().y());
+        float delta = (event->pos().x() - m_mousePos.x()) * .5f;
+        m_position.setZ(m_position.z() + (m_mousePos.y() - event->pos().y()) * .5f);
         m_position.setX(m_position.x() + qSin((m_theta + 90.0f) * s_degPerRad) * delta);
         m_position.setY(m_position.y() + qCos((m_theta + 90.0f) * s_degPerRad) * delta);
     }
-    m_mousePos = event->pos();
+
+    if (event->buttons() != Qt::NoButton && !rect().contains(event->pos())) {
+        QCursor::setPos(mapToGlobal(rect().center()));
+        m_mousePos = rect().center();
+    } else {
+        m_mousePos = event->pos();
+    }
 
     updateViewMatrix();
     updateGL();
