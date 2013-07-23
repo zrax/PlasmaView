@@ -23,6 +23,7 @@
 
 class QTreeWidget;
 class plResManager;
+class plSceneObject;
 class PlasmaGLWidget;
 
 class PlasmaView : public QMainWindow
@@ -51,15 +52,19 @@ class PlasmaTreeWidgetItem : public QTreeWidgetItem
 {
 public:
     PlasmaTreeWidgetItem(QTreeWidget *parent, const QStringList &strings)
-        : QTreeWidgetItem(parent, strings) { }
+        : QTreeWidgetItem(parent, strings), m_object(nullptr) { }
     PlasmaTreeWidgetItem(QTreeWidgetItem *parent, const QStringList &strings)
-        : QTreeWidgetItem(parent, strings) { }
+        : QTreeWidgetItem(parent, strings), m_object(nullptr) { }
 
     void setLocation(const plLocation &loc) { m_location = loc; }
     const plLocation &location() const { return m_location; }
 
+    void setObject(plSceneObject *obj) { m_object = obj; }
+    plSceneObject *object() const { return m_object; }
+
 private:
     plLocation m_location;
+    plSceneObject *m_object;
 };
 
 #endif

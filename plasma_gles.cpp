@@ -20,14 +20,15 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QMatrix4x4>
-#include <QtMath>
+#include <QtCore/qmath.h>
 #include <GLES2/gl2.h>
 #include <PRP/Geometry/plDrawableSpans.h>
 
 static const float s_degPerRad = 0.0174532925f;
 
 PlasmaGLWidget::PlasmaGLWidget(QWidget *parent)
-    : QGLWidget(parent), m_theta(0.0f), m_phi(0.0f)
+    : QGLWidget(parent), m_theta(0.0f), m_phi(0.0f),
+      m_renderMode(RenderTextured)
 {
     setAttribute(Qt::WA_NoSystemBackground);
     setFocusPolicy(Qt::StrongFocus);
@@ -69,6 +70,12 @@ void PlasmaGLWidget::addGeometry(plDrawableSpans *spans)
             m_drawables.append(render);
         }
     }
+}
+
+void PlasmaGLWidget::setRenderMode(RenderMode mode)
+{
+    m_renderMode = mode;
+    updateGL();
 }
 
 void PlasmaGLWidget::initializeGL()
@@ -143,8 +150,16 @@ void PlasmaGLWidget::paintGL()
             offset += 3 * sizeof(float);
         }
 
-        glDrawElements(GL_TRIANGLES, render.m_indexCount,
-                       GL_UNSIGNED_SHORT, nullptr);
+        if (m_renderMode == RenderWireframe) {
+            // This is kinda slow, but it works with our triangle-based index data...
+            for (GLsizei i = 0; i < render.m_indexCount; i += 3) {
+                glDrawElements(GL_LINE_LOOP, 3, GL_UNSIGNED_SHORT,
+                               reinterpret_cast<GLvoid *>(i * sizeof(GLushort)));
+            }
+        } else {
+            glDrawElements(GL_TRIANGLES, render.m_indexCount,
+                           GL_UNSIGNED_SHORT, nullptr);
+        }
     }
 }
 
@@ -204,11 +219,13 @@ void PlasmaGLWidget::mousePressEvent(QMouseEvent *event)
 void PlasmaGLWidget::mouseMoveEvent(QMouseEvent *event)
 {
     if (event->buttons() == Qt::LeftButton) {
-        // FPS-style movement
+        // Flat Movement
         float delta = m_mousePos.y() - event->pos().y();
         m_position.setX(m_position.x() + qSin(m_theta * s_degPerRad) * delta);
         m_position.setY(m_position.y() + qCos(m_theta * s_degPerRad) * delta);
-        m_theta += event->pos().x() - m_mousePos.x();
+        delta = event->pos().x() - m_mousePos.x();
+        m_position.setX(m_position.x() + qCos(m_theta * s_degPerRad) * delta);
+        m_position.setY(m_position.y() + qSin(m_theta * s_degPerRad) * delta);
     } else if (event->buttons() == Qt::RightButton) {
         // Look mode
         m_theta += event->pos().x() - m_mousePos.x();

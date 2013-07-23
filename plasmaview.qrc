@@ -9,7 +9,6 @@
         <file alias="sceneobj.png">icons/sceneobj.png</file>
         <file alias="sim.png">icons/sim.png</file>
 
-        <file alias="view-points.png">icons/view-points.png</file>
         <file alias="view-wire.png">icons/view-wire.png</file>
         <file alias="view-flat.png">icons/view-flat.png</file>
         <file alias="view-textured.png">icons/view-textured.png</file>

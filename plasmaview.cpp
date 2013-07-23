@@ -62,19 +62,31 @@ PlasmaView::PlasmaView()
     connect(aOpen, SIGNAL(triggered()), SLOT(onOpenAge()));
 
     mainTbar->addSeparator();
-    QAction *aPoints = mainTbar->addAction(QIcon(":/res/view-points.png"), "&Points");
-    aPoints->setShortcut(QKeySequence("F1"));
-    aPoints->setCheckable(true);
-    QAction *aWire = mainTbar->addAction(QIcon(":/res/view-wire.png"), "&Wireframe");
+    QActionGroup *viewGroup = new QActionGroup(mainTbar);
+    viewGroup->setExclusive(true);
+    QAction *aWire = viewGroup->addAction(QIcon(":/res/view-wire.png"), "&Wireframe");
     aWire->setShortcut(QKeySequence("F2"));
     aWire->setCheckable(true);
-    QAction *aFlat = mainTbar->addAction(QIcon(":/res/view-flat.png"), "&Flat");
+    mainTbar->addAction(aWire);
+    QAction *aFlat = viewGroup->addAction(QIcon(":/res/view-flat.png"), "&Flat");
     aFlat->setShortcut(QKeySequence("F3"));
     aFlat->setCheckable(true);
-    QAction *aTextured = mainTbar->addAction(QIcon(":/res/view-textured.png"), "&Textured");
+    mainTbar->addAction(aFlat);
+    QAction *aTextured = viewGroup->addAction(QIcon(":/res/view-textured.png"), "&Textured");
     aTextured->setShortcut(QKeySequence("F4"));
     aTextured->setCheckable(true);
     aTextured->setChecked(true);
+    mainTbar->addAction(aTextured);
+
+    connect(aWire, &QAction::triggered, [this]() {
+        m_render->setRenderMode(PlasmaGLWidget::RenderWireframe);
+    });
+    connect(aFlat, &QAction::triggered, [this]() {
+        m_render->setRenderMode(PlasmaGLWidget::RenderFlat);
+    });
+    connect(aTextured, &QAction::triggered, [this]() {
+        m_render->setRenderMode(PlasmaGLWidget::RenderTextured);
+    });
 
     resize(800, 600);
 }
@@ -154,6 +166,7 @@ void PlasmaView::loadAge(const QString &filename)
             PlasmaTreeWidgetItem *obj_item = new PlasmaTreeWidgetItem(page_item,
                     QStringList(plStringToQString(key->getName())));
             obj_item->setLocation(pageLoc);
+            obj_item->setObject(obj);
 
             if (obj->getDrawInterface().Exists())
                 obj_item->setIcon(0, QIcon(":/res/sceneobj.png"));

@@ -35,6 +35,13 @@ public:
     void clear();
     void addGeometry(plDrawableSpans *spans);
 
+    enum RenderMode {
+        RenderWireframe, RenderFlat, RenderTextured
+    };
+
+public slots:
+    void setRenderMode(RenderMode mode);
+
 protected:
     virtual void initializeGL();
     virtual void resizeGL(int w, int h);
@@ -58,6 +65,7 @@ private:
     QVector3D m_position;
     float m_theta, m_phi;
     QPoint m_mousePos;
+    RenderMode m_renderMode;
 
     QOpenGLShaderProgram m_shader;
     int sha_position;
