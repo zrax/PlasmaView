@@ -14,17 +14,27 @@
  * along with PlasmaView.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "plasma_gles.h"
+#include "plasma_scene.h"
 
 #include <QMessageBox>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QMatrix4x4>
 #include <QtCore/qmath.h>
-#include <GLES2/gl2.h>
 #include <PRP/Geometry/plDrawableSpans.h>
 
 static const float s_degPerRad = 0.0174532925f;
+
+// Qt's samples inherit this to make it "look like raw OpenGL", but personally
+// I think that looks hacky, and I'd rather explicitly call out that I'm using
+// an automagical function wrapper.
+#if defined(QT_OPENGL_ES_2)
+#   include <QOpenGLFunctions_ES2>
+    static QOpenGLFunctions_ES2 glf;
+#else
+#   include <QOpenGLFunctions_3_2_Core>
+    static QOpenGLFunctions_3_2_Core glf;
+#endif
 
 PlasmaGLWidget::PlasmaGLWidget(QWidget *parent)
     : QGLWidget(parent), m_theta(0.0f), m_phi(0.0f),
@@ -36,8 +46,8 @@ PlasmaGLWidget::PlasmaGLWidget(QWidget *parent)
 
 void PlasmaGLWidget::clear()
 {
-    foreach (const RenderData &drawable, m_drawables)
-        glDeleteBuffers(2, drawable.m_buffers);
+    foreach (RenderData *render, m_drawables)
+        delete render;
     m_drawables.clear();
 
     m_position = QVector3D(0.0f, 0.0f, 0.0f);
@@ -51,21 +61,29 @@ void PlasmaGLWidget::addGeometry(plDrawableSpans *spans)
     for (size_t grp = 0; grp < spans->getNumBufferGroups(); ++grp) {
         plGBufferGroup *group = spans->getBuffer(grp);
         for (size_t buf = 0; buf < group->getNumVertBuffers(); ++buf) {
-            RenderData render;
-            render.m_stride = group->getStride();
-            render.m_indexCount = group->getIdxBufferCount(buf);
-            render.m_weights = (group->getFormat() & plGBufferGroup::kSkinWeightMask) >> 4;
-            render.m_skinIndices = (group->getFormat() & plGBufferGroup::kSkinIndices) != 0;
-            glGenBuffers(2, render.m_buffers);
+            RenderData *render = new RenderData(
+                    group->getStride(),
+                    group->getIdxBufferCount(buf),
+                    (group->getFormat() & plGBufferGroup::kSkinWeightMask) >> 4,
+                    group->getFormat() & plGBufferGroup::kUVCountMask,
+                    (group->getFormat() & plGBufferGroup::kSkinIndices) != 0
+            );
 
-            glBindBuffer(GL_ARRAY_BUFFER, render.m_buffers[0]);
-            glBufferData(GL_ARRAY_BUFFER, group->getVertBufferSize(buf),
-                         group->getVertBufferStorage(buf), GL_STATIC_DRAW);
+            render->m_vao.create();
+            render->m_vao.bind();
 
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, render.m_buffers[1]);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, render.m_indexCount * sizeof(GLushort),
-                         static_cast<const GLushort *>(group->getIdxBufferStorage(buf)),
-                         GL_STATIC_DRAW);
+            render->m_vBuffer.create();
+            render->m_vBuffer.bind();
+            render->m_vBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+            render->m_vBuffer.allocate(group->getVertBufferStorage(buf),
+                                       group->getVertBufferSize(buf));
+
+            render->m_iBuffer.create();
+            render->m_iBuffer.bind();
+            render->m_iBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+            render->m_iBuffer.allocate(
+                        static_cast<const GLushort *>(group->getIdxBufferStorage(buf)),
+                        render->m_indexCount * sizeof(GLushort));
 
             m_drawables.append(render);
         }
@@ -80,9 +98,10 @@ void PlasmaGLWidget::setRenderMode(RenderMode mode)
 
 void PlasmaGLWidget::initializeGL()
 {
+    glf.initializeOpenGLFunctions();
     qglClearColor(QColor(0, 255, 255));
     glEnable(GL_DEPTH_TEST);
-    //glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
 
     if (!m_shader.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/vshader.glsl"))
         QMessageBox::warning(this, "Error compiling vshader.glsl", m_shader.log());
@@ -100,6 +119,9 @@ void PlasmaGLWidget::initializeGL()
 
     // Starting view position
     updateViewMatrix();
+
+    qDebug("OpenGL initialized version: %s; GLSL: %s",
+        glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
 }
 
 void PlasmaGLWidget::resizeGL(int w, int h)
@@ -116,20 +138,25 @@ void PlasmaGLWidget::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    foreach (const RenderData &render, m_drawables) {
-        glBindBuffer(GL_ARRAY_BUFFER, render.m_buffers[0]);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, render.m_buffers[1]);
+#if !defined(QT_OPENGL_ES_2)
+    glPolygonMode(GL_FRONT_AND_BACK, (m_renderMode == RenderWireframe) ? GL_LINE : GL_FILL);
+#endif
+
+    foreach (RenderData *render, m_drawables) {
+        render->m_vao.bind();
+        render->m_vBuffer.bind();
+        render->m_iBuffer.bind();
 
         uintptr_t offset = 0;
         m_shader.enableAttributeArray(sha_position);
-        glVertexAttribPointer(sha_position, 3, GL_FLOAT, GL_FALSE, render.m_stride,
-                              reinterpret_cast<GLvoid *>(offset));
+        glf.glVertexAttribPointer(sha_position, 3, GL_FLOAT, GL_FALSE, render->m_stride,
+                                  reinterpret_cast<GLvoid *>(offset));
         offset += 3 * sizeof(float);
 
-        if (render.m_weights > 0) {
+        if (render->m_weights > 0) {
             // Skip weights and skin indices
-            offset += sizeof(float) * render.m_weights;
-            if (render.m_skinIndices)
+            offset += sizeof(float) * render->m_weights;
+            if (render->m_skinIndices)
                 offset += sizeof(int);
         }
 
@@ -138,28 +165,33 @@ void PlasmaGLWidget::paintGL()
 
         // Color
         m_shader.enableAttributeArray(sha_color);
-        glVertexAttribPointer(sha_color, 4, GL_UNSIGNED_BYTE, GL_TRUE,
-                              render.m_stride, reinterpret_cast<GLvoid *>(offset));
+        glf.glVertexAttribPointer(sha_color, 4, GL_UNSIGNED_BYTE, GL_TRUE,
+                                  render->m_stride, reinterpret_cast<GLvoid *>(offset));
         offset += sizeof(unsigned int);
 
         // Color 2?
         offset += sizeof(unsigned int);
 
-        for (int u = 0; u < render.m_uvws; ++u) {
+        for (int u = 0; u < render->m_uvws; ++u) {
             // TODO
             offset += 3 * sizeof(float);
         }
 
+#if defined(QT_OPENGL_ES_2)
         if (m_renderMode == RenderWireframe) {
             // This is kinda slow, but it works with our triangle-based index data...
-            for (GLsizei i = 0; i < render.m_indexCount; i += 3) {
+            for (GLsizei i = 0; i < render->m_indexCount; i += 3) {
                 glDrawElements(GL_LINE_LOOP, 3, GL_UNSIGNED_SHORT,
                                reinterpret_cast<GLvoid *>(i * sizeof(GLushort)));
             }
         } else {
-            glDrawElements(GL_TRIANGLES, render.m_indexCount,
+            glDrawElements(GL_TRIANGLES, render->m_indexCount,
                            GL_UNSIGNED_SHORT, nullptr);
         }
+#else
+        glDrawElements(GL_TRIANGLES, render->m_indexCount,
+                       GL_UNSIGNED_SHORT, nullptr);
+#endif
     }
 }
 

@@ -16,11 +16,27 @@
 
 #include <QApplication>
 #include <QIcon>
+#include <QGLFormat>
 #include "plasmaview.h"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+
+    QGLFormat format;
+
+#if !defined(QT_OPENGL_ES_2)
+    // Try for OpenGL 3.2 Core profile
+    format.setOption(QGL::NoDeprecatedFunctions);
+    format.setVersion(3, 2);
+    format.setProfile(QGLFormat::CoreProfile);
+#endif
+
+    // Ignored on GLESv2, but doesn't break anything
+    format.setSampleBuffers(true);
+    format.setSamples(4);
+
+    QGLFormat::setDefaultFormat(format);
 
 #if defined(Q_OS_WIN) || defined(Q_OS_MAC)
     QIcon::setThemeName("oxygen");

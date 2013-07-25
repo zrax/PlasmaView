@@ -14,10 +14,12 @@
  * along with PlasmaView.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _PLASMA_GLES_H
-#define _PLASMA_GLES_H
+#ifndef _PLASMA_SCENE_H
+#define _PLASMA_SCENE_H
 
 #include <QGLWidget>
+#include <QOpenGLBuffer>
+#include <QOpenGLVertexArrayObject>
 #include <QOpenGLShaderProgram>
 #include <QVector3D>
 #include <QList>
@@ -55,14 +57,22 @@ protected:
 private:
     struct RenderData
     {
-        GLuint m_buffers[2];
+        QOpenGLVertexArrayObject m_vao;
+        QOpenGLBuffer m_vBuffer, m_iBuffer;
         GLsizei m_stride;
         GLsizei m_indexCount;
         int m_weights;
         int m_uvws;
         bool m_skinIndices;
+
+        RenderData(GLsizei stride, GLsizei indexCount, int weights,
+                   int uvws, bool skinIndices)
+            : m_vBuffer(QOpenGLBuffer::VertexBuffer),
+              m_iBuffer(QOpenGLBuffer::IndexBuffer), m_stride(stride),
+              m_indexCount(indexCount), m_weights(weights), m_uvws(uvws),
+              m_skinIndices(skinIndices) { }
     };
-    QList<RenderData> m_drawables;
+    QList<RenderData *> m_drawables;
     QVector3D m_position;
     float m_theta, m_phi;
     QPoint m_mousePos;

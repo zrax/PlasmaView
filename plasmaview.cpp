@@ -30,7 +30,7 @@
 #include <PRP/Object/plSceneObject.h>
 #include <PRP/Geometry/plDrawableSpans.h>
 #include <PRP/plSceneNode.h>
-#include "plasma_gles.h"
+#include "plasma_scene.h"
 
 #define plStringToQString(x)  QString::fromUtf8((x).cstr())
 #define qStringToPlString(x)  plString((x).toUtf8().constData())
