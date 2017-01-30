@@ -32,8 +32,12 @@
 #include <PRP/plSceneNode.h>
 #include "plasma_scene.h"
 
-#define plStringToQString(x)  QString::fromUtf8((x).cstr())
-#define qStringToPlString(x)  plString((x).toUtf8().constData())
+#define STToQString(x)  QString::fromUtf8((x).c_str())
+inline ST::string qStringToST(const QString &str)
+{
+    QByteArray utf8 = str.toUtf8();
+    return ST::string::from_utf8(utf8.constData(), utf8.size(), ST::assume_valid);
+}
 
 PlasmaView::PlasmaView()
     : m_resMgr(0)
@@ -124,7 +128,7 @@ void PlasmaView::loadAge(const QString &filename)
     m_resMgr->SetProgressFunc([&progress, &lastPage](plPageInfo *page, size_t curObj, size_t maxObjs) {
         if (page != lastPage) {
             progress.setLabelText(QString("Loading %1...")
-                    .arg(page ? plStringToQString(page->getPage()) : "<Unknown Page>"));
+                    .arg(page ? STToQString(page->getPage()) : "<Unknown Page>"));
             progress.setMaximum(maxObjs);
             lastPage = page;
         }
@@ -142,14 +146,14 @@ void PlasmaView::loadAge(const QString &filename)
             continue;
 
         PlasmaTreeWidgetItem *page_item = new PlasmaTreeWidgetItem(m_objectTree,
-                QStringList(plStringToQString(age->getPage(pg).fName)));
+                QStringList(STToQString(age->getPage(pg).fName)));
         page_item->setIcon(0, QIcon(":/res/page.png"));
         page_item->setLocation(pageLoc);
 
         if (keys.size() > 1) {
             QMessageBox::critical(this, "Bad Node",
                 QString("PRPs should have exactly 1 scene node, but %1 had %2!")
-                .arg(plStringToQString(age->getPage(pg).fName)).arg(keys.size()));
+                .arg(STToQString(age->getPage(pg).fName)).arg(keys.size()));
             continue;
         }
 
@@ -164,7 +168,7 @@ void PlasmaView::loadAge(const QString &filename)
         foreach (const plKey &key, keys) {
             plSceneObject *obj = plSceneObject::Convert(key->getObj());
             PlasmaTreeWidgetItem *obj_item = new PlasmaTreeWidgetItem(page_item,
-                    QStringList(plStringToQString(key->getName())));
+                    QStringList(STToQString(key->getName())));
             obj_item->setLocation(pageLoc);
             obj_item->setObject(obj);
 

@@ -6,6 +6,7 @@ find_package(HSPlasma REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5OpenGL REQUIRED)
+find_package(string_theory 1.4 REQUIRED)
 
 option(PlasmaView_USE_GLES "Use GLES 2.0 instead of Desktop OpenGL" OFF)
 if(PlasmaView_USE_GLES)
@@ -60,7 +61,7 @@ endif()
 add_executable(PlasmaView WIN32 MACOSX_BUNDLE
                ${PlasmaView_Sources} ${PlasmaView_MOC} ${PlasmaView_RCC})
 qt5_use_modules(PlasmaView Core Widgets OpenGL)
-target_link_libraries(PlasmaView HSPlasma)
+target_link_libraries(PlasmaView HSPlasma string_theory)
 
 # Qt5OpenGLConfig.cmake doesn't give us the GL dependencies automatically :(
 target_link_libraries(PlasmaView ${OPENGL_LIBRARIES})
